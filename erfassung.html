@@ -329,7 +329,7 @@ button.stopbtn:active{transform:scale(.97)}
   var formOuterNav = document.getElementById("formOuterNav");
 
   var AUSSENWAESCHE = "Außenwäsche";
-  var AUSSENWAESCHE_SUBITEMS = ["Karosserie", "Felge vorne links", "Felge vorne rechts", "Felge hinten links", "Felge hinten rechts"];
+  var AUSSENWAESCHE_SUBITEMS = ["Karosserie vorne", "Karosserie hinten", "Karosserie linke Seite", "Karosserie rechte Seite", "Felge vorne links", "Felge vorne rechts", "Felge hinten links", "Felge hinten rechts"];
 
   function entferneAussenwaescheSubitems() {
     var idx = bereichList.indexOf(AUSSENWAESCHE);
@@ -695,12 +695,14 @@ button.stopbtn:active{transform:scale(.97)}
       notizFoto: draft.notizFoto,
       geplanteZeitSekunden: draft.geplanteZeitSekunden,
       dauerSekunden: draft.dauerSekunden,
-      preis: draft.preis
+      preis: draft.preis,
+      kiSchaetzung: lastKiErgebnis
     };
     dbPut(STORE_JOBS, job).then(function () {
       return dbDeleteKey(STORE_DRAFT, "active");
     }).then(function () {
       draft = null;
+      lastKiErgebnis = null;
       showPhase("form");
       resetForm();
       renderJobs();
@@ -836,6 +838,24 @@ button.stopbtn:active{transform:scale(.97)}
     });
   }
 
+  var lastKiErgebnis = null;
+
+  function waehleReferenzJobs(jobs, marke, modell, standorte, max) {
+    var bewertet = jobs.map(function (job) {
+      var score = 0;
+      if (marke && job.marke && job.marke.toLowerCase() === marke.toLowerCase()) score += 3;
+      if (modell && job.modell && job.modell.toLowerCase() === modell.toLowerCase()) score += 3;
+      var jobStandorte = Object.keys(job.fotos || {});
+      standorte.forEach(function (s) { if (jobStandorte.indexOf(s) > -1) score += 1; });
+      return { job: job, score: score, erstellt: job.erstellt };
+    });
+    bewertet.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      return b.erstellt.localeCompare(a.erstellt);
+    });
+    return bewertet.slice(0, max).map(function (b) { return b.job; });
+  }
+
   var kiEndpointInput = document.getElementById("kiEndpointInput");
   try {
     var savedEndpoint = localStorage.getItem("ccv_ki_endpoint");
@@ -859,9 +879,10 @@ button.stopbtn:active{transform:scale(.97)}
         if (vorherFotoData[s]) neuBereiche.push({ name: s, fotoBase64: await blobToBase64(vorherFotoData[s]) });
       }
 
+      var neuMarke = document.getElementById("f-marke").value.trim();
+      var neuModell = document.getElementById("f-modell").value.trim();
       var jobs = await dbGetAll(STORE_JOBS);
-      jobs.sort(function (a, b) { return b.erstellt.localeCompare(a.erstellt); });
-      var referenzJobs = jobs.slice(0, 5);
+      var referenzJobs = waehleReferenzJobs(jobs, neuMarke, neuModell, activeStandorte, 6);
       var referenzen = [];
       for (var j = 0; j < referenzJobs.length; j++) {
         var job = referenzJobs[j];
@@ -873,7 +894,10 @@ button.stopbtn:active{transform:scale(.97)}
           var nachherB64 = job.fotos[name].nachher ? await blobToBase64(job.fotos[name].nachher) : null;
           bereiche.push({ name: name, vorherBase64: vorherB64, nachherBase64: nachherB64 });
         }
-        referenzen.push({ marke: job.marke, modell: job.modell, preis: job.preis, dauerSekunden: job.dauerSekunden, bereiche: bereiche });
+        referenzen.push({
+          marke: job.marke, modell: job.modell, preis: job.preis, dauerSekunden: job.dauerSekunden, bereiche: bereiche,
+          kiSchaetzungPreis: (job.kiSchaetzung && job.kiSchaetzung.preis) || null
+        });
       }
 
       var resp = await fetch(endpoint, {
@@ -887,6 +911,7 @@ button.stopbtn:active{transform:scale(.97)}
       if (!resp.ok) throw new Error("Server antwortete mit Status " + resp.status);
       var data = await resp.json();
       if (data.error) throw new Error(data.error);
+      lastKiErgebnis = { preis: Number(data.preis) || null, dauerMinuten: Number(data.dauerMinuten) || null, begruendung: data.begruendung || null };
 
       var dauerSek = Math.round((Number(data.dauerMinuten) || 0) * 60);
       ergebnisEl.innerHTML = "";

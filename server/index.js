@@ -29,6 +29,9 @@ app.post("/schaetzen", async (req, res) => {
     const content = [];
     content.push({ type: "text", text: buildIntro(referenzen) });
 
+    const kalibrierung = buildKalibrierung(referenzen);
+    if (kalibrierung) content.push({ type: "text", text: kalibrierung });
+
     referenzen.forEach((job, i) => {
       content.push({
         type: "text",
@@ -114,6 +117,19 @@ function fmtDauer(sec) {
 
 function safe(v) {
   return v === undefined || v === null ? "" : String(v);
+}
+
+function buildKalibrierung(referenzen) {
+  const paare = referenzen.filter((j) => j.kiSchaetzungPreis && j.preis);
+  if (paare.length < 2) return null;
+  const fehler = paare.map((j) => (j.preis - j.kiSchaetzungPreis) / j.preis);
+  const mittel = fehler.reduce((a, b) => a + b, 0) / fehler.length;
+  if (Math.abs(mittel) < 0.05) return null;
+  const richtung = mittel > 0 ? "zu niedrig" : "zu hoch";
+  const prozent = Math.round(Math.abs(mittel) * 100);
+  return "\n--- Selbstkorrektur-Hinweis ---\nIn " + paare.length + " früheren Fällen, in denen du (die KI) bereits eine Schätzung " +
+    "abgegeben hattest, lag diese im Schnitt um etwa " + prozent + "% " + richtung + " im Vergleich zum tatsächlich berechneten Preis. " +
+    "Berücksichtige diese Tendenz und korrigiere deine neue Schätzung entsprechend.";
 }
 
 function buildIntro(referenzen) {
