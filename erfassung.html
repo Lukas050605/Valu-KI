@@ -172,6 +172,12 @@ button.stopbtn:active{transform:scale(.97)}
     </div>
 
     <div class="formstep" data-step="5" hidden>
+      <div class="fld" id="kiBlock">
+        <span class="fldlabel">KI-Preisschätzung (optional)</span>
+        <input type="text" id="kiEndpointInput" placeholder="Server-Adresse, z.B. https://valu-ki-server.onrender.com/schaetzen">
+        <button type="button" id="kiSchaetzenBtn" class="chip add">KI-Schätzung anfragen</button>
+        <div id="kiErgebnis"></div>
+      </div>
       <label class="fld">Preis
         <div class="euro"><input type="number" id="f-preis" min="0" step="0.5" inputmode="decimal" placeholder="0,00"> <span class="mono">€</span></div>
       </label>
@@ -818,6 +824,87 @@ button.stopbtn:active{transform:scale(.97)}
         }
       }
     });
+  });
+
+  /* ---- KI-Preisschätzung ---- */
+  function blobToBase64(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  var kiEndpointInput = document.getElementById("kiEndpointInput");
+  try {
+    var savedEndpoint = localStorage.getItem("ccv_ki_endpoint");
+    if (savedEndpoint) kiEndpointInput.value = savedEndpoint;
+  } catch (e) {}
+  kiEndpointInput.addEventListener("change", function () {
+    try { localStorage.setItem("ccv_ki_endpoint", kiEndpointInput.value.trim()); } catch (e) {}
+  });
+
+  document.getElementById("kiSchaetzenBtn").addEventListener("click", async function () {
+    var endpoint = kiEndpointInput.value.trim();
+    var ergebnisEl = document.getElementById("kiErgebnis");
+    if (!endpoint) { alert("Bitte zuerst die Server-Adresse der KI eintragen."); return; }
+    if (!activeStandorte.length) { alert("Keine Vorher-Fotos vorhanden."); return; }
+
+    ergebnisEl.innerHTML = '<p class="laufend-hint">Fragt KI, einen Moment …</p>';
+    try {
+      var neuBereiche = [];
+      for (var i = 0; i < activeStandorte.length; i++) {
+        var s = activeStandorte[i];
+        if (vorherFotoData[s]) neuBereiche.push({ name: s, fotoBase64: await blobToBase64(vorherFotoData[s]) });
+      }
+
+      var jobs = await dbGetAll(STORE_JOBS);
+      jobs.sort(function (a, b) { return b.erstellt.localeCompare(a.erstellt); });
+      var referenzJobs = jobs.slice(0, 5);
+      var referenzen = [];
+      for (var j = 0; j < referenzJobs.length; j++) {
+        var job = referenzJobs[j];
+        var bereiche = [];
+        var keys = Object.keys(job.fotos || {});
+        for (var k = 0; k < keys.length; k++) {
+          var name = keys[k];
+          var vorherB64 = job.fotos[name].vorher ? await blobToBase64(job.fotos[name].vorher) : null;
+          var nachherB64 = job.fotos[name].nachher ? await blobToBase64(job.fotos[name].nachher) : null;
+          bereiche.push({ name: name, vorherBase64: vorherB64, nachherBase64: nachherB64 });
+        }
+        referenzen.push({ marke: job.marke, modell: job.modell, preis: job.preis, dauerSekunden: job.dauerSekunden, bereiche: bereiche });
+      }
+
+      var resp = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          neu: { marke: document.getElementById("f-marke").value.trim(), modell: document.getElementById("f-modell").value.trim(), bereiche: neuBereiche },
+          referenzen: referenzen
+        })
+      });
+      if (!resp.ok) throw new Error("Server antwortete mit Status " + resp.status);
+      var data = await resp.json();
+      if (data.error) throw new Error(data.error);
+
+      var dauerSek = Math.round((Number(data.dauerMinuten) || 0) * 60);
+      ergebnisEl.innerHTML = "";
+      var box = document.createElement("div");
+      box.className = "zeit-ergebnis";
+      box.innerHTML = "<b>" + eur(data.preis) + "</b> · ca. " + fmtDauer(dauerSek) +
+        (data.begruendung ? "<br><span style='font-size:13px'>" + esc(data.begruendung) + "</span>" : "");
+      var uebernehmenBtn = document.createElement("button");
+      uebernehmenBtn.type = "button"; uebernehmenBtn.className = "chip"; uebernehmenBtn.style.marginTop = "8px";
+      uebernehmenBtn.textContent = "Preis übernehmen";
+      uebernehmenBtn.addEventListener("click", function () {
+        document.getElementById("f-preis").value = data.preis;
+      });
+      ergebnisEl.appendChild(box);
+      ergebnisEl.appendChild(uebernehmenBtn);
+    } catch (err) {
+      ergebnisEl.innerHTML = '<p class="laufend-hint">Fehler: ' + esc(err.message || String(err)) + "</p>";
+    }
   });
 
   /* ---- Start: laufenden Auftrag wiederherstellen oder Formular zeigen ---- */
