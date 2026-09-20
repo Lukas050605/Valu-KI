@@ -337,6 +337,7 @@ button.stopbtn:active{transform:scale(.97)}
   function renderBereichScreen() {
     bereichScreen.innerHTML = "";
     bereichNext.hidden = false;
+    bereichNext.disabled = false;
     if (bereichIndex < bereichList.length) {
       var name = bereichList[bereichIndex];
       bereichProgress.textContent = "BEREICH " + (bereichIndex + 1) + " VON " + bereichList.length + " · " + name.toUpperCase();
@@ -378,14 +379,22 @@ button.stopbtn:active{transform:scale(.97)}
       title.className = "stepheading"; title.textContent = name;
       var pickWrap = document.createElement("div");
       pickWrap.className = "fotoblock-row single";
-      pickWrap.appendChild(makeFotoPick(function (file) { vorherFotoData[name] = file; }, vorherFotoData[name], "VORHER"));
+      pickWrap.appendChild(makeFotoPick(function (file) {
+        vorherFotoData[name] = file;
+        bereichNext.disabled = false;
+      }, vorherFotoData[name], "VORHER"));
       var hint = document.createElement("p");
-      hint.className = "laufend-hint"; hint.textContent = "Kein Foto aufgenommen? Dann wird dieser Bereich übersprungen.";
+      hint.className = "laufend-hint"; hint.textContent = "Ohne Foto geht es nicht weiter — zum Überspringen den Button unten nutzen.";
+      var skipBtn = document.createElement("button");
+      skipBtn.type = "button"; skipBtn.className = "chip"; skipBtn.textContent = "Diesen Bereich überspringen";
+      skipBtn.addEventListener("click", function () { advanceBereich(); });
 
       bereichScreen.appendChild(title);
       bereichScreen.appendChild(pickWrap);
       bereichScreen.appendChild(hint);
+      bereichScreen.appendChild(skipBtn);
       bereichNext.textContent = "Weiter";
+      bereichNext.disabled = !vorherFotoData[name];
     } else {
       bereichProgress.textContent = "WEITERE BEREICHE";
       var title2 = document.createElement("h2");
@@ -412,7 +421,7 @@ button.stopbtn:active{transform:scale(.97)}
     }
   }
 
-  bereichNext.addEventListener("click", function () {
+  function advanceBereich() {
     if (bereichIndex >= bereichList.length) {
       activeStandorte = bereichList.filter(function (s) { return vorherFotoData[s]; });
       if (!activeStandorte.length) { alert("Bitte mindestens einen Bereich fotografieren."); return; }
@@ -422,7 +431,8 @@ button.stopbtn:active{transform:scale(.97)}
     }
     bereichIndex += 1;
     renderBereichScreen();
-  });
+  }
+  bereichNext.addEventListener("click", advanceBereich);
   bereichBack.addEventListener("click", function () {
     if (bereichIndex === 0) {
       currentFormStep = 1;

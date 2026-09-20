@@ -1,4 +1,4 @@
-var CACHE = "ccv-erfassung-v4";
+var CACHE = "ccv-erfassung-v5";
 var ASSETS = [
   "erfassung.html",
   "erfassung.webmanifest",
