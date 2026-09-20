@@ -632,6 +632,9 @@ button.stopbtn:active{transform:scale(.97)}
         var del = document.createElement("button");
         del.className = "del"; del.type = "button"; del.textContent = "Löschen";
         del.addEventListener("click", function () {
+          var pw = prompt("Passwort zum Löschen eingeben:");
+          if (pw === null) return;
+          if (pw !== "Lukas050605") { alert("Falsches Passwort — nicht gelöscht."); return; }
           if (confirm("Diesen Auftrag wirklich löschen?")) dbDeleteKey(STORE_JOBS, j.id).then(renderJobs);
         });
         head.appendChild(b); head.appendChild(del);
