@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auftrag erfassen | CAR CARE VALU</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="erfassung.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1b1712">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Auftrag">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1b1712;--acc:#7d5d24;--gold:#cdb48a;--bg:#efeae0}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 Manrope,"Helvetica Neue",Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+#app{max-width:640px;margin:0 auto;padding:0 0 60px}
+header.top{padding:22px 18px 4px}
+header.top h1{margin:0;font:800 24px/1.1 Archivo,Manrope,Arial,sans-serif;letter-spacing:-.01em}
+header.top p{margin:8px 0 0;font-size:13.5px;color:#5f5648;line-height:1.6}
+
+.timerbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:14px 18px;background:rgba(239,234,224,.97);backdrop-filter:blur(6px);border-bottom:1px solid rgba(27,23,18,.14);margin-top:14px}
+.timerbtn{flex:0 0 auto;padding:16px 26px;border-radius:14px;border:none;font:800 14px/1 Archivo,Manrope,Arial,sans-serif;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;transition:background .25s,transform .15s}
+.timerbtn.go{background:var(--gold);color:#14110d}
+.timerbtn.stop{background:var(--ink);color:#f3efe7;animation:pulse 1.4s ease-in-out infinite}
+.timerbtn:active{transform:scale(.96)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(27,23,18,.35)}50%{box-shadow:0 0 0 9px rgba(27,23,18,0)}}
+.timerdisp{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:28px;font-weight:600;letter-spacing:.02em}
+.timerhint{margin-left:auto;font-size:11px;color:#5f5648;max-width:120px;line-height:1.4}
+
+form{padding:20px 18px 4px;display:flex;flex-direction:column;gap:18px}
+.fld{display:flex;flex-direction:column;gap:8px;font-size:13px;color:#58503f}
+.fld input[type=text],.fld input[type=number],.fld textarea{padding:14px 15px;border-radius:10px;border:1px solid rgba(27,23,18,.2);background:#fff;color:var(--ink);font:600 16px/1.3 Manrope,Arial,sans-serif;outline:none;transition:border-color .25s;width:100%}
+.fld textarea{font-weight:400;resize:vertical}
+.fld input:focus,.fld textarea:focus{border-color:rgba(138,106,47,.7)}
+.fldlabel{font-size:13px;color:#58503f}
+.euro{display:flex;align-items:center;gap:10px}
+.euro input{max-width:160px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:10px 14px;border-radius:20px;border:1px solid rgba(27,23,18,.2);background:rgba(255,255,255,.6);color:#3a3226;font:600 13px/1 Manrope,Arial,sans-serif;cursor:pointer;transition:border-color .25s,background .25s}
+.chip:hover{background:rgba(138,106,47,.14)}
+.chip.on{border-color:rgba(138,106,47,.85);background:var(--gold);color:#14110d}
+.chip.add{display:flex;align-items:center;gap:6px;border-style:dashed}
+
+#fotoBereiche{display:flex;flex-direction:column;gap:14px}
+.fotoblock{border:1px solid rgba(27,23,18,.14);border-radius:14px;background:rgba(255,255,255,.55);padding:12px}
+.fotoblock-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.fotoblock-head b{font:700 14px/1.2 Archivo,Manrope,Arial,sans-serif}
+.fotoblock-head button{border:none;background:transparent;color:#8a6a2f;font-size:16px;cursor:pointer;padding:4px 8px}
+.fotoblock-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fotopick{position:relative;display:block;aspect-ratio:4/3;border-radius:10px;overflow:hidden;border:1px dashed rgba(27,23,18,.3);cursor:pointer;background:#ded4c1 center/cover no-repeat}
+.fotopick input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.fotopick-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;pointer-events:none}
+.fotopick-inner .tag{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:9.5px;letter-spacing:.14em;padding:5px 9px;border-radius:5px;background:rgba(255,255,255,.9);color:#241f18}
+.fotopick.filled .fotopick-inner .tag{background:rgba(255,255,255,.85);position:absolute;bottom:8px;left:8px}
+.fotopick-inner .hint{font-size:11.5px;color:#5f5648}
+.fotopick.filled .fotopick-inner .hint{display:none}
+
+button.save{padding:18px;border-radius:12px;border:none;background:var(--ink);color:#f3efe7;font:800 15px/1 Archivo,Manrope,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:transform .2s,background .2s}
+button.save:active{transform:scale(.98)}
+
+.list{padding:26px 18px 0}
+.listhead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.listhead h2{margin:0;font:700 16px/1.2 Archivo,Manrope,Arial,sans-serif}
+.listactions{display:flex;gap:8px}
+.listactions button{padding:9px 13px;border-radius:8px;border:1px solid rgba(27,23,18,.2);background:rgba(255,255,255,.6);font:600 12px/1 Manrope,Arial,sans-serif;cursor:pointer}
+.listactions button.danger{color:#8a2f2f;border-color:rgba(138,47,47,.35)}
+
+.jobcard{border:1px solid rgba(27,23,18,.14);border-radius:14px;background:rgba(255,255,255,.65);padding:14px;margin-bottom:12px}
+.jobcard-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.jobcard-head b{font:700 15px/1.2 Archivo,Manrope,Arial,sans-serif}
+.jobcard-head .del{border:none;background:transparent;color:#8a2f2f;cursor:pointer;font-size:13px}
+.jobcard .meta{margin:6px 0 0;font-size:12.5px;color:#5f5648;display:flex;flex-wrap:wrap;gap:10px}
+.jobcard .tags{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.jobcard .tags span{font-size:11px;padding:4px 8px;border-radius:12px;background:rgba(205,180,138,.34);color:#3a3226}
+.jobcard .thumbs{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.jobcard .thumbs img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid rgba(27,23,18,.14)}
+.jobcard .notizen{margin:10px 0 0;font-size:13px;color:#3b3427;line-height:1.5}
+.empty{font-size:13.5px;color:#5f5648;padding:20px 0}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <h1>Auftrag erfassen</h1>
+    <p>Läuft nur auf diesem Gerät — Fotos, Preis und Zeit werden lokal im Browser gespeichert, nichts wird irgendwohin gesendet. Exportiere regelmäßig unten, damit nichts verloren geht.</p>
+  </header>
+
+  <div class="timerbar">
+    <button id="timerBtn" class="timerbtn go" type="button">Go</button>
+    <div class="timerdisp mono" id="timerDisp">00:00</div>
+    <div class="timerhint">Go drücken beim Start, Stop wenn fertig — Dauer wird automatisch übernommen.</div>
+  </div>
+
+  <form id="jobform">
+    <label class="fld">Fahrzeug / Kennzeichen (optional)
+      <input type="text" id="f-fahrzeug" placeholder="z.B. VW Passat Kombi">
+    </label>
+
+    <div class="fld">
+      <span class="fldlabel">Bereiche bearbeitet</span>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div id="fotoBereiche"></div>
+
+    <label class="fld">Preis
+      <div class="euro"><input type="number" id="f-preis" min="0" step="0.5" inputmode="decimal" placeholder="0,00" required> <span class="mono">€</span></div>
+    </label>
+
+    <label class="fld">Dauer manuell (falls Timer nicht genutzt)
+      <input type="text" id="f-dauer-manuell" placeholder="z.B. 1:45 (Std:Min) oder 90 (Minuten)">
+    </label>
+
+    <label class="fld">Notizen
+      <textarea id="f-notizen" rows="3" placeholder="Zustand, Besonderheiten, was viel Zeit gekostet hat …"></textarea>
+    </label>
+
+    <button class="save" type="submit">Auftrag speichern</button>
+  </form>
+
+  <section class="list">
+    <div class="listhead">
+      <h2>Gespeicherte Aufträge (<span id="count">0</span>)</h2>
+      <div class="listactions">
+        <button id="exportBtn" type="button">Exportieren</button>
+        <button id="clearBtn" type="button" class="danger">Alles löschen</button>
+      </div>
+    </div>
+    <div id="jobs"><p class="empty">Noch keine Aufträge gespeichert.</p></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---- IndexedDB ---- */
+  var DB_NAME = "ccv_auftraege", DB_VERSION = 1, STORE = "jobs";
+  function openDB() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+  function dbAdd(job) {
+    return openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE, "readwrite");
+        tx.objectStore(STORE).add(job);
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+  function dbGetAll() {
+    return openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var req = db.transaction(STORE, "readonly").objectStore(STORE).getAll();
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { reject(req.error); };
+      });
+    });
+  }
+  function dbDelete(id) {
+    return openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE, "readwrite");
+        tx.objectStore(STORE).delete(id);
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+  function dbClear() {
+    return openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE, "readwrite");
+        tx.objectStore(STORE).clear();
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+
+  /* ---- Timer ---- */
+  var timerBtn = document.getElementById("timerBtn");
+  var timerDisp = document.getElementById("timerDisp");
+  var timerStart = null, timerInterval = null, timerSeconds = 0;
+  function fmt(s) {
+    var m = Math.floor(s / 60), sec = s % 60;
+    return String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+  }
+  function tick() { timerDisp.textContent = fmt(Math.round((Date.now() - timerStart) / 1000)); }
+  timerBtn.addEventListener("click", function () {
+    if (!timerStart) {
+      timerStart = Date.now();
+      timerBtn.textContent = "Stop";
+      timerBtn.classList.remove("go"); timerBtn.classList.add("stop");
+      timerInterval = setInterval(tick, 500);
+    } else {
+      timerSeconds = Math.round((Date.now() - timerStart) / 1000);
+      clearInterval(timerInterval);
+      timerStart = null;
+      timerBtn.textContent = "Go";
+      timerBtn.classList.remove("stop"); timerBtn.classList.add("go");
+    }
+  });
+  function resetTimer() {
+    timerSeconds = 0; timerStart = null; clearInterval(timerInterval);
+    timerDisp.textContent = "00:00";
+    timerBtn.textContent = "Go";
+    timerBtn.classList.remove("stop"); timerBtn.classList.add("go");
+  }
+
+  /* ---- Bereiche / Fotos ---- */
+  var STANDORTE_DEFAULT = ["Vorne links (Fahrer)", "Vorne rechts (Beifahrer)", "Hinten links", "Hinten rechts", "Kofferraum", "Fußraum", "Sitze / Polster", "Armaturenbrett", "Außenwäsche"];
+  var customStandorte = [];
+  var activeStandorte = [];
+  var fotoData = {};
+
+  var chipsEl = document.getElementById("chips");
+  var fotoBereicheEl = document.getElementById("fotoBereiche");
+
+  function toggleStandort(name) {
+    var i = activeStandorte.indexOf(name);
+    if (i > -1) { activeStandorte.splice(i, 1); delete fotoData[name]; }
+    else { activeStandorte.push(name); fotoData[name] = fotoData[name] || { vorher: null, nachher: null }; }
+    renderChips(); renderFotoBereiche();
+  }
+
+  function renderChips() {
+    chipsEl.innerHTML = "";
+    STANDORTE_DEFAULT.concat(customStandorte).forEach(function (name) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip" + (activeStandorte.indexOf(name) > -1 ? " on" : "");
+      b.textContent = name;
+      b.addEventListener("click", function () { toggleStandort(name); });
+      chipsEl.appendChild(b);
+    });
+    var add = document.createElement("button");
+    add.type = "button"; add.className = "chip add"; add.textContent = "+ eigener Bereich";
+    add.addEventListener("click", function () {
+      var name = prompt("Name des Bereichs:");
+      if (name && name.trim()) {
+        name = name.trim();
+        if (STANDORTE_DEFAULT.indexOf(name) === -1 && customStandorte.indexOf(name) === -1) customStandorte.push(name);
+        if (activeStandorte.indexOf(name) === -1) activeStandorte.push(name);
+        fotoData[name] = fotoData[name] || { vorher: null, nachher: null };
+        renderChips(); renderFotoBereiche();
+      }
+    });
+    chipsEl.appendChild(add);
+  }
+
+  function makeFotoPick(standort, phase) {
+    var label = document.createElement("label");
+    label.className = "fotopick";
+    var input = document.createElement("input");
+    input.type = "file"; input.accept = "image/*"; input.setAttribute("capture", "environment");
+    var inner = document.createElement("div");
+    inner.className = "fotopick-inner";
+    var tag = document.createElement("span");
+    tag.className = "tag mono"; tag.textContent = phase.toUpperCase();
+    var hint = document.createElement("span");
+    hint.className = "hint"; hint.textContent = "Foto";
+    inner.appendChild(tag); inner.appendChild(hint);
+    label.appendChild(input); label.appendChild(inner);
+
+    var existing = fotoData[standort] && fotoData[standort][phase];
+    if (existing) {
+      label.classList.add("filled");
+      label.style.backgroundImage = "url('" + URL.createObjectURL(existing) + "')";
+    }
+    input.addEventListener("change", function () {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      fotoData[standort][phase] = file;
+      label.classList.add("filled");
+      label.style.backgroundImage = "url('" + URL.createObjectURL(file) + "')";
+    });
+    return label;
+  }
+
+  function renderFotoBereiche() {
+    fotoBereicheEl.innerHTML = "";
+    activeStandorte.forEach(function (name) {
+      var block = document.createElement("div");
+      block.className = "fotoblock";
+      var head = document.createElement("div");
+      head.className = "fotoblock-head";
+      var b = document.createElement("b"); b.textContent = name;
+      var rm = document.createElement("button");
+      rm.type = "button"; rm.textContent = "✕"; rm.title = "Bereich entfernen";
+      rm.addEventListener("click", function () { toggleStandort(name); });
+      head.appendChild(b); head.appendChild(rm);
+      var row = document.createElement("div");
+      row.className = "fotoblock-row";
+      row.appendChild(makeFotoPick(name, "vorher"));
+      row.appendChild(makeFotoPick(name, "nachher"));
+      block.appendChild(head); block.appendChild(row);
+      fotoBereicheEl.appendChild(block);
+    });
+  }
+
+  /* ---- Speichern ---- */
+  function parseManuellDauer(txt) {
+    txt = (txt || "").trim();
+    if (!txt) return null;
+    if (txt.indexOf(":") > -1) {
+      var parts = txt.split(":");
+      var h = Number(parts[0]) || 0, m = Number(parts[1]) || 0;
+      return (h * 60 + m) * 60;
+    }
+    var n = parseFloat(txt.replace(",", "."));
+    return isNaN(n) ? null : Math.round(n * 60);
+  }
+
+  function resetForm() {
+    document.getElementById("jobform").reset();
+    activeStandorte = []; fotoData = {};
+    renderChips(); renderFotoBereiche(); resetTimer();
+  }
+
+  document.getElementById("jobform").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var preisRaw = document.getElementById("f-preis").value.replace(",", ".");
+    var preis = parseFloat(preisRaw);
+    if (isNaN(preis)) { alert("Bitte einen Preis eingeben."); return; }
+
+    var fotos = {};
+    activeStandorte.forEach(function (s) {
+      fotos[s] = { vorher: (fotoData[s] && fotoData[s].vorher) || null, nachher: (fotoData[s] && fotoData[s].nachher) || null };
+    });
+
+    if (timerStart) { timerSeconds = Math.round((Date.now() - timerStart) / 1000); clearInterval(timerInterval); timerStart = null; }
+    var dauer = timerSeconds > 0 ? timerSeconds : parseManuellDauer(document.getElementById("f-dauer-manuell").value);
+
+    var job = {
+      id: Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+      erstellt: new Date().toISOString(),
+      fahrzeug: document.getElementById("f-fahrzeug").value.trim(),
+      standorte: activeStandorte.slice(),
+      fotos: fotos,
+      preis: preis,
+      dauerSekunden: dauer || null,
+      notizen: document.getElementById("f-notizen").value.trim()
+    };
+
+    dbAdd(job).then(function () {
+      resetForm();
+      renderJobs();
+    }).catch(function (err) {
+      alert("Speichern hat nicht geklappt: " + err);
+    });
+  });
+
+  /* ---- Liste ---- */
+  var jobsEl = document.getElementById("jobs");
+  var countEl = document.getElementById("count");
+
+  function fmtDauer(sec) {
+    if (!sec) return "–";
+    var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+    return (h ? h + " Std " : "") + m + " Min";
+  }
+  function fmtDatum(iso) {
+    var d = new Date(iso);
+    return d.toLocaleDateString("de-DE") + " · " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  }
+  function eur(n) { return n.toFixed(2).replace(".", ",") + " €"; }
+
+  function renderJobs() {
+    dbGetAll().then(function (jobs) {
+      jobs.sort(function (a, b) { return b.erstellt.localeCompare(a.erstellt); });
+      countEl.textContent = jobs.length;
+      jobsEl.innerHTML = "";
+      if (!jobs.length) { jobsEl.innerHTML = '<p class="empty">Noch keine Aufträge gespeichert.</p>'; return; }
+      jobs.forEach(function (j) {
+        var card = document.createElement("div");
+        card.className = "jobcard";
+
+        var head = document.createElement("div");
+        head.className = "jobcard-head";
+        var b = document.createElement("b");
+        b.textContent = j.fahrzeug || "Ohne Fahrzeugangabe";
+        var del = document.createElement("button");
+        del.className = "del"; del.type = "button"; del.textContent = "Löschen";
+        del.addEventListener("click", function () {
+          if (confirm("Diesen Auftrag wirklich löschen?")) dbDelete(j.id).then(renderJobs);
+        });
+        head.appendChild(b); head.appendChild(del);
+
+        var meta = document.createElement("div");
+        meta.className = "meta mono";
+        meta.innerHTML = "<span>" + fmtDatum(j.erstellt) + "</span><span>" + eur(j.preis) + "</span><span>" + fmtDauer(j.dauerSekunden) + "</span>";
+
+        var tags = document.createElement("div");
+        tags.className = "tags";
+        (j.standorte || []).forEach(function (s) {
+          var sp = document.createElement("span"); sp.textContent = s; tags.appendChild(sp);
+        });
+
+        var thumbs = document.createElement("div");
+        thumbs.className = "thumbs";
+        Object.keys(j.fotos || {}).forEach(function (s) {
+          ["vorher", "nachher"].forEach(function (phase) {
+            var f = j.fotos[s][phase];
+            if (f) {
+              var img = document.createElement("img");
+              img.src = URL.createObjectURL(f);
+              img.title = s + " · " + phase;
+              thumbs.appendChild(img);
+            }
+          });
+        });
+
+        card.appendChild(head); card.appendChild(meta); card.appendChild(tags);
+        if (thumbs.children.length) card.appendChild(thumbs);
+        if (j.notizen) {
+          var not = document.createElement("p");
+          not.className = "notizen"; not.textContent = j.notizen;
+          card.appendChild(not);
+        }
+        jobsEl.appendChild(card);
+      });
+    });
+  }
+
+  /* ---- Export / Löschen ---- */
+  function sanitize(s) { return String(s || "").normalize("NFKD").replace(/[^\w\-]+/g, "_").replace(/_+/g, "_"); }
+  function filenameFor(j, s, phase) {
+    var datum = j.erstellt.slice(0, 10);
+    return datum + "_" + sanitize(j.fahrzeug || j.id) + "_" + sanitize(s) + "_" + phase + ".jpg";
+  }
+  function downloadBlob(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 8000);
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  document.getElementById("exportBtn").addEventListener("click", function () {
+    dbGetAll().then(async function (jobs) {
+      if (!jobs.length) { alert("Keine Aufträge gespeichert."); return; }
+      var manifest = jobs.map(function (j) {
+        var fotos = {};
+        Object.keys(j.fotos || {}).forEach(function (s) {
+          fotos[s] = {
+            vorher: j.fotos[s].vorher ? filenameFor(j, s, "vorher") : null,
+            nachher: j.fotos[s].nachher ? filenameFor(j, s, "nachher") : null
+          };
+        });
+        return { id: j.id, erstellt: j.erstellt, fahrzeug: j.fahrzeug, standorte: j.standorte, preis: j.preis, dauerSekunden: j.dauerSekunden, notizen: j.notizen, fotos: fotos };
+      });
+      downloadBlob(new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" }), "auftraege.json");
+      await sleep(350);
+      for (var i = 0; i < jobs.length; i++) {
+        var j = jobs[i];
+        var keys = Object.keys(j.fotos || {});
+        for (var k = 0; k < keys.length; k++) {
+          var s = keys[k];
+          if (j.fotos[s].vorher) { downloadBlob(j.fotos[s].vorher, filenameFor(j, s, "vorher")); await sleep(350); }
+          if (j.fotos[s].nachher) { downloadBlob(j.fotos[s].nachher, filenameFor(j, s, "nachher")); await sleep(350); }
+        }
+      }
+    });
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", function () {
+    if (confirm("Wirklich ALLE gespeicherten Aufträge löschen? Das kann nicht rückgängig gemacht werden — vorher exportieren!")) {
+      dbClear().then(renderJobs);
+    }
+  });
+
+  /* ---- Start ---- */
+  renderChips();
+  renderFotoBereiche();
+  renderJobs();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("erfassung-sw.js").catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
