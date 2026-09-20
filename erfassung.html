@@ -189,7 +189,6 @@ button.stopbtn:active{transform:scale(.97)}
       <h2>Gespeicherte Aufträge (<span id="count">0</span>)</h2>
       <div class="listactions">
         <button id="exportBtn" type="button">Exportieren</button>
-        <button id="clearBtn" type="button" class="danger">Alles löschen</button>
       </div>
     </div>
     <div id="jobs"><p class="empty">Noch keine Aufträge gespeichert.</p></div>
@@ -236,7 +235,6 @@ button.stopbtn:active{transform:scale(.97)}
       });
     });
   }
-  function dbClear(store) { return openDB().then(function (db) { var tx = db.transaction(store, "readwrite"); tx.objectStore(store).clear(); return txDone(tx); }); }
 
   /* ---- Hilfsfunktionen ---- */
   function fmt(s) {
@@ -661,12 +659,6 @@ button.stopbtn:active{transform:scale(.97)}
         }
       }
     });
-  });
-
-  document.getElementById("clearBtn").addEventListener("click", function () {
-    if (confirm("Wirklich ALLE gespeicherten Aufträge löschen? Das kann nicht rückgängig gemacht werden — vorher exportieren!")) {
-      dbClear(STORE_JOBS).then(renderJobs);
-    }
   });
 
   /* ---- Start: laufenden Auftrag wiederherstellen oder Formular zeigen ---- */
