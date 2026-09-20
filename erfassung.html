@@ -77,6 +77,9 @@ button.stopbtn:active{transform:scale(.97)}
 /* ---- Nachher-Phase ---- */
 #phase-nachher{padding:30px 18px;display:flex;flex-direction:column;gap:18px}
 #phase-nachher h2{margin:0;font:800 20px/1.2 Archivo,Manrope,Arial,sans-serif}
+.stepheading{margin:0 0 4px;font:800 20px/1.2 Archivo,Manrope,Arial,sans-serif}
+#bereichScreen{display:flex;flex-direction:column;gap:12px}
+#bereichScreen input[type=text]{padding:14px 15px;border-radius:10px;border:1px solid rgba(27,23,18,.2);background:#fff;color:var(--ink);font:600 16px/1.3 Manrope,Arial,sans-serif;outline:none;width:100%;margin-top:4px}
 .zeit-ergebnis{background:rgba(205,180,138,.3);border:1px solid rgba(138,106,47,.35);border-radius:12px;padding:12px 16px;font-size:14px}
 .zeit-ergebnis b{font-family:"JetBrains Mono",ui-monospace,monospace}
 .nachher-progress{font-size:12px;color:#5f5648}
@@ -140,11 +143,12 @@ button.stopbtn:active{transform:scale(.97)}
     </div>
 
     <div class="formstep" data-step="2" hidden>
-      <div class="fld">
-        <span class="fldlabel">Bereiche — Vorher-Fotos</span>
-        <div class="chips" id="chips"></div>
+      <div class="nachher-progress mono" id="bereichProgress"></div>
+      <div id="bereichScreen"></div>
+      <div class="nachher-nav" id="bereichNav">
+        <button class="back" id="bereichBack" type="button">Zurück</button>
+        <button class="next" id="bereichNext" type="button">Weiter</button>
       </div>
-      <div id="fotoBereiche"></div>
     </div>
 
     <div class="formstep" data-step="3" hidden>
@@ -169,7 +173,7 @@ button.stopbtn:active{transform:scale(.97)}
       </label>
     </div>
 
-    <div class="nachher-nav" style="padding:0 18px">
+    <div class="nachher-nav" id="formOuterNav" style="padding:0 18px">
       <button class="back" id="formBack" type="button" hidden>Zurück</button>
       <button class="next" id="formNext" type="button">Weiter</button>
     </div>
@@ -299,47 +303,85 @@ button.stopbtn:active{transform:scale(.97)}
     phaseNachher.hidden = name !== "nachher";
   }
 
-  /* ---- Bereiche / Vorher-Fotos (Formular) ---- */
+  /* ---- Bereiche / Vorher-Fotos (Formular) — ein Bereich pro Vollbild ---- */
   var STANDORTE_DEFAULT = ["Vorne links (Fahrer)", "Vorne rechts (Beifahrer)", "Hinten links", "Hinten rechts", "Kofferraum", "Fußraum", "Sitze / Polster", "Armaturenbrett", "Außenwäsche"];
-  var customStandorte = [];
   var activeStandorte = [];
   var vorherFotoData = {};
   var notizFoto = null;
+  var bereichList = STANDORTE_DEFAULT.slice();
+  var bereichIndex = 0;
 
-  var chipsEl = document.getElementById("chips");
-  var fotoBereicheEl = document.getElementById("fotoBereiche");
   var notizFotoWrap = document.getElementById("notizFotoWrap");
+  var bereichProgress = document.getElementById("bereichProgress");
+  var bereichScreen = document.getElementById("bereichScreen");
+  var bereichBack = document.getElementById("bereichBack");
+  var bereichNext = document.getElementById("bereichNext");
+  var formOuterNav = document.getElementById("formOuterNav");
 
-  function toggleStandort(name) {
-    var i = activeStandorte.indexOf(name);
-    if (i > -1) { activeStandorte.splice(i, 1); delete vorherFotoData[name]; }
-    else { activeStandorte.push(name); vorherFotoData[name] = vorherFotoData[name] || null; }
-    renderChips(); renderFotoBereiche();
+  function renderBereichScreen() {
+    bereichScreen.innerHTML = "";
+    if (bereichIndex < bereichList.length) {
+      var name = bereichList[bereichIndex];
+      bereichProgress.textContent = "BEREICH " + (bereichIndex + 1) + " VON " + bereichList.length + " · " + name.toUpperCase();
+
+      var title = document.createElement("h2");
+      title.className = "stepheading"; title.textContent = name;
+      var pickWrap = document.createElement("div");
+      pickWrap.className = "fotoblock-row single";
+      pickWrap.appendChild(makeFotoPick(function (file) { vorherFotoData[name] = file; }, vorherFotoData[name], "VORHER"));
+      var hint = document.createElement("p");
+      hint.className = "laufend-hint"; hint.textContent = "Kein Foto aufgenommen? Dann wird dieser Bereich übersprungen.";
+
+      bereichScreen.appendChild(title);
+      bereichScreen.appendChild(pickWrap);
+      bereichScreen.appendChild(hint);
+      bereichNext.textContent = "Weiter";
+    } else {
+      bereichProgress.textContent = "WEITERE BEREICHE";
+      var title2 = document.createElement("h2");
+      title2.className = "stepheading"; title2.textContent = "Noch ein Bereich?";
+      var hint2 = document.createElement("p");
+      hint2.className = "laufend-hint"; hint2.textContent = "Optional einen eigenen Bereich hinzufügen, oder weiter zu den Notizen.";
+      var input = document.createElement("input");
+      input.type = "text"; input.placeholder = "Name des Bereichs";
+      var addBtn = document.createElement("button");
+      addBtn.type = "button"; addBtn.className = "chip add"; addBtn.textContent = "+ Bereich hinzufügen";
+      addBtn.addEventListener("click", function () {
+        var val = input.value.trim();
+        if (!val) return;
+        bereichList.push(val);
+        bereichIndex = bereichList.length - 1;
+        renderBereichScreen();
+      });
+
+      bereichScreen.appendChild(title2);
+      bereichScreen.appendChild(hint2);
+      bereichScreen.appendChild(input);
+      bereichScreen.appendChild(addBtn);
+      bereichNext.textContent = "Fertig — weiter";
+    }
   }
 
-  function renderChips() {
-    chipsEl.innerHTML = "";
-    STANDORTE_DEFAULT.concat(customStandorte).forEach(function (name) {
-      var b = document.createElement("button");
-      b.type = "button"; b.className = "chip" + (activeStandorte.indexOf(name) > -1 ? " on" : "");
-      b.textContent = name;
-      b.addEventListener("click", function () { toggleStandort(name); });
-      chipsEl.appendChild(b);
-    });
-    var add = document.createElement("button");
-    add.type = "button"; add.className = "chip add"; add.textContent = "+ eigener Bereich";
-    add.addEventListener("click", function () {
-      var name = prompt("Name des Bereichs:");
-      if (name && name.trim()) {
-        name = name.trim();
-        if (STANDORTE_DEFAULT.indexOf(name) === -1 && customStandorte.indexOf(name) === -1) customStandorte.push(name);
-        if (activeStandorte.indexOf(name) === -1) activeStandorte.push(name);
-        vorherFotoData[name] = vorherFotoData[name] || null;
-        renderChips(); renderFotoBereiche();
-      }
-    });
-    chipsEl.appendChild(add);
-  }
+  bereichNext.addEventListener("click", function () {
+    if (bereichIndex >= bereichList.length) {
+      activeStandorte = bereichList.filter(function (s) { return vorherFotoData[s]; });
+      if (!activeStandorte.length) { alert("Bitte mindestens einen Bereich fotografieren."); return; }
+      currentFormStep = 3;
+      renderFormStep();
+      return;
+    }
+    bereichIndex += 1;
+    renderBereichScreen();
+  });
+  bereichBack.addEventListener("click", function () {
+    if (bereichIndex === 0) {
+      currentFormStep = 1;
+      renderFormStep();
+      return;
+    }
+    bereichIndex -= 1;
+    renderBereichScreen();
+  });
 
   function makeFotoPick(onFile, existingBlob, tagText) {
     var label = document.createElement("label");
@@ -368,26 +410,6 @@ button.stopbtn:active{transform:scale(.97)}
     return label;
   }
 
-  function renderFotoBereiche() {
-    fotoBereicheEl.innerHTML = "";
-    activeStandorte.forEach(function (name) {
-      var block = document.createElement("div");
-      block.className = "fotoblock";
-      var head = document.createElement("div");
-      head.className = "fotoblock-head";
-      var b = document.createElement("b"); b.textContent = name;
-      var rm = document.createElement("button");
-      rm.type = "button"; rm.textContent = "✕"; rm.title = "Bereich entfernen";
-      rm.addEventListener("click", function () { toggleStandort(name); });
-      head.appendChild(b); head.appendChild(rm);
-      var row = document.createElement("div");
-      row.className = "fotoblock-row single";
-      row.appendChild(makeFotoPick(function (file) { vorherFotoData[name] = file; }, vorherFotoData[name], "VORHER"));
-      block.appendChild(head); block.appendChild(row);
-      fotoBereicheEl.appendChild(block);
-    });
-  }
-
   function renderNotizFoto() {
     notizFotoWrap.innerHTML = "";
     notizFotoWrap.appendChild(makeFotoPick(function (file) { notizFoto = file; }, notizFoto, "NOTIZ"));
@@ -406,7 +428,8 @@ button.stopbtn:active{transform:scale(.97)}
     if (keepFirma) { try { localStorage.setItem("ccv_firma", keepFirma); } catch (e) {} }
     firmaInput.value = keepFirma;
     activeStandorte = []; vorherFotoData = {}; notizFoto = null;
-    renderChips(); renderFotoBereiche(); renderNotizFoto();
+    bereichList = STANDORTE_DEFAULT.slice(); bereichIndex = 0;
+    renderBereichScreen(); renderNotizFoto();
     currentFormStep = 0;
     renderFormStep();
   }
@@ -422,6 +445,7 @@ button.stopbtn:active{transform:scale(.97)}
   function renderFormStep() {
     formSteps.forEach(function (el, i) { el.hidden = i !== currentFormStep; });
     formStepIndicator.textContent = "SCHRITT " + (currentFormStep + 1) + " VON " + formSteps.length + " · " + formStepLabels[currentFormStep];
+    formOuterNav.hidden = currentFormStep === 2;
     formBack.hidden = currentFormStep === 0;
     var isLast = currentFormStep === formSteps.length - 1;
     formNext.textContent = isLast ? "Go" : "Weiter";
@@ -433,10 +457,6 @@ button.stopbtn:active{transform:scale(.97)}
     if (i === 1 && (!document.getElementById("f-marke").value.trim() || !document.getElementById("f-modell").value.trim())) {
       alert("Bitte Marke und Modell eingeben."); return false;
     }
-    if (i === 2 && (!activeStandorte.length || activeStandorte.some(function (s) { return !vorherFotoData[s]; }))) {
-      alert("Bitte mindestens einen Bereich auswählen und für jeden ausgewählten Bereich ein Vorher-Foto aufnehmen.");
-      return false;
-    }
     return true;
   }
 
@@ -445,10 +465,12 @@ button.stopbtn:active{transform:scale(.97)}
     if (isLast) { startJob(); return; }
     if (!validateFormStep(currentFormStep)) return;
     currentFormStep += 1;
+    if (currentFormStep === 2) { bereichIndex = 0; renderBereichScreen(); }
     renderFormStep();
   });
   formBack.addEventListener("click", function () {
     currentFormStep -= 1;
+    if (currentFormStep === 2) { bereichIndex = bereichList.length; renderBereichScreen(); }
     renderFormStep();
   });
   renderFormStep();
@@ -731,8 +753,7 @@ button.stopbtn:active{transform:scale(.97)}
   });
 
   /* ---- Start: laufenden Auftrag wiederherstellen oder Formular zeigen ---- */
-  renderChips();
-  renderFotoBereiche();
+  renderBereichScreen();
   renderNotizFoto();
   renderJobs();
 
