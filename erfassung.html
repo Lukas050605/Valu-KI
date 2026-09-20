@@ -126,9 +126,13 @@ button.stopbtn:active{transform:scale(.97)}
     <div class="nachher-progress mono" id="formStepIndicator" style="padding:0 18px"></div>
 
     <div class="formstep" data-step="0">
-      <label class="fld">Firma
-        <input type="text" id="f-firma" placeholder="Dein Firmenname">
-      </label>
+      <div class="fld">
+        <span class="fldlabel">Firma</span>
+        <div class="chips" id="firmaChips">
+          <button type="button" class="chip" data-firma="Valu">Valu</button>
+          <button type="button" class="chip" data-firma="Md_Glanzwerk">Md_Glanzwerk</button>
+        </div>
+      </div>
     </div>
 
     <div class="formstep" data-step="1" hidden>
@@ -415,18 +419,28 @@ button.stopbtn:active{transform:scale(.97)}
     notizFotoWrap.appendChild(makeFotoPick(function (file) { notizFoto = file; }, notizFoto, "NOTIZ"));
   }
 
-  /* ---- Firma merken ---- */
-  var firmaInput = document.getElementById("f-firma");
+  /* ---- Firma-Profil ---- */
+  var selectedFirma = null;
+  var firmaChips = Array.prototype.slice.call(document.querySelectorAll("#firmaChips .chip"));
   try {
     var savedFirma = localStorage.getItem("ccv_firma");
-    if (savedFirma) firmaInput.value = savedFirma;
+    if (savedFirma && firmaChips.some(function (b) { return b.dataset.firma === savedFirma; })) selectedFirma = savedFirma;
   } catch (e) {}
+  function renderFirmaChips() {
+    firmaChips.forEach(function (b) { b.classList.toggle("on", b.dataset.firma === selectedFirma); });
+  }
+  firmaChips.forEach(function (b) {
+    b.addEventListener("click", function () {
+      selectedFirma = b.dataset.firma;
+      try { localStorage.setItem("ccv_firma", selectedFirma); } catch (e) {}
+      renderFirmaChips();
+    });
+  });
+  renderFirmaChips();
 
   function resetForm() {
-    var keepFirma = firmaInput.value.trim();
     phaseForm.reset();
-    if (keepFirma) { try { localStorage.setItem("ccv_firma", keepFirma); } catch (e) {} }
-    firmaInput.value = keepFirma;
+    renderFirmaChips();
     activeStandorte = []; vorherFotoData = {}; notizFoto = null;
     bereichList = STANDORTE_DEFAULT.slice(); bereichIndex = 0;
     renderBereichScreen(); renderNotizFoto();
@@ -453,7 +467,7 @@ button.stopbtn:active{transform:scale(.97)}
   }
 
   function validateFormStep(i) {
-    if (i === 0 && !firmaInput.value.trim()) { alert("Bitte deinen Firmennamen eingeben."); return false; }
+    if (i === 0 && !selectedFirma) { alert("Bitte eine Firma auswählen."); return false; }
     if (i === 1 && (!document.getElementById("f-marke").value.trim() || !document.getElementById("f-modell").value.trim())) {
       alert("Bitte Marke und Modell eingeben."); return false;
     }
@@ -503,21 +517,19 @@ button.stopbtn:active{transform:scale(.97)}
   });
 
   function startJob() {
-    var firma = firmaInput.value.trim();
+    var firma = selectedFirma;
     var marke = document.getElementById("f-marke").value.trim();
     var modell = document.getElementById("f-modell").value.trim();
     var preisRaw = document.getElementById("f-preis").value.replace(",", ".");
     var preis = parseFloat(preisRaw);
 
-    if (!firma) { alert("Bitte deinen Firmennamen eingeben."); return; }
+    if (!firma) { alert("Bitte eine Firma auswählen."); return; }
     if (!marke || !modell) { alert("Bitte Marke und Modell eingeben."); return; }
     if (!activeStandorte.length || activeStandorte.some(function (s) { return !vorherFotoData[s]; })) {
       alert("Bitte mindestens einen Bereich auswählen und für jeden ausgewählten Bereich ein Vorher-Foto aufnehmen.");
       return;
     }
     if (isNaN(preis)) { alert("Bitte einen Preis eingeben."); return; }
-
-    try { localStorage.setItem("ccv_firma", firma); } catch (err) {}
 
     draft = {
       id: "active",
