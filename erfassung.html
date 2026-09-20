@@ -308,7 +308,7 @@ button.stopbtn:active{transform:scale(.97)}
   }
 
   /* ---- Bereiche / Vorher-Fotos (Formular) — ein Bereich pro Vollbild ---- */
-  var STANDORTE_DEFAULT = ["Vorne links (Fahrer)", "Vorne rechts (Beifahrer)", "Hinten links", "Hinten rechts", "Kofferraum", "Fußraum", "Sitze / Polster", "Armaturenbrett", "Außenwäsche"];
+  var STANDORTE_DEFAULT = ["Vorne links (Fahrer)", "Vorne rechts (Beifahrer)", "Hinten links", "Hinten rechts", "Kofferraum", "Fußraum", "Sitz vorne links (Fahrer)", "Sitz vorne rechts (Beifahrer)", "Sitz hinten links", "Sitz hinten rechts", "Armaturenbrett", "Außenwäsche"];
   var activeStandorte = [];
   var vorherFotoData = {};
   var notizFoto = null;
@@ -322,11 +322,57 @@ button.stopbtn:active{transform:scale(.97)}
   var bereichNext = document.getElementById("bereichNext");
   var formOuterNav = document.getElementById("formOuterNav");
 
+  var AUSSENWAESCHE = "Außenwäsche";
+  var AUSSENWAESCHE_SUBITEMS = ["Karosserie", "Felge vorne links", "Felge vorne rechts", "Felge hinten links", "Felge hinten rechts"];
+
+  function entferneAussenwaescheSubitems() {
+    var idx = bereichList.indexOf(AUSSENWAESCHE);
+    if (idx === -1) return;
+    while (AUSSENWAESCHE_SUBITEMS.indexOf(bereichList[idx + 1]) > -1) {
+      var removed = bereichList.splice(idx + 1, 1)[0];
+      delete vorherFotoData[removed];
+    }
+  }
+
   function renderBereichScreen() {
     bereichScreen.innerHTML = "";
+    bereichNext.hidden = false;
     if (bereichIndex < bereichList.length) {
       var name = bereichList[bereichIndex];
       bereichProgress.textContent = "BEREICH " + (bereichIndex + 1) + " VON " + bereichList.length + " · " + name.toUpperCase();
+
+      if (name === AUSSENWAESCHE) {
+        bereichNext.hidden = true;
+        var idxAfter = bereichList.indexOf(AUSSENWAESCHE) + 1;
+        var hatSubitems = AUSSENWAESCHE_SUBITEMS.indexOf(bereichList[idxAfter]) > -1;
+
+        var titleW = document.createElement("h2");
+        titleW.className = "stepheading"; titleW.textContent = "Außenwäsche wird gemacht?";
+        var jaBtn = document.createElement("button");
+        jaBtn.type = "button"; jaBtn.className = "chip" + (hatSubitems ? " on" : ""); jaBtn.textContent = "Ja";
+        var neinBtn = document.createElement("button");
+        neinBtn.type = "button"; neinBtn.className = "chip" + (!hatSubitems ? " on" : ""); neinBtn.textContent = "Nein";
+        var choices = document.createElement("div");
+        choices.className = "chips"; choices.appendChild(jaBtn); choices.appendChild(neinBtn);
+
+        jaBtn.addEventListener("click", function () {
+          if (!hatSubitems) {
+            var insertAt = bereichList.indexOf(AUSSENWAESCHE) + 1;
+            bereichList.splice.apply(bereichList, [insertAt, 0].concat(AUSSENWAESCHE_SUBITEMS));
+          }
+          bereichIndex += 1;
+          renderBereichScreen();
+        });
+        neinBtn.addEventListener("click", function () {
+          entferneAussenwaescheSubitems();
+          bereichIndex += 1;
+          renderBereichScreen();
+        });
+
+        bereichScreen.appendChild(titleW);
+        bereichScreen.appendChild(choices);
+        return;
+      }
 
       var title = document.createElement("h2");
       title.className = "stepheading"; title.textContent = name;
