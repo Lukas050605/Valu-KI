@@ -27,7 +27,8 @@ header.top h1{margin:0;font:800 24px/1.1 Archivo,Manrope,Arial,sans-serif;letter
 header.top p{margin:8px 0 0;font-size:13.5px;color:#5f5648;line-height:1.6}
 [hidden]{display:none!important}
 
-form{padding:20px 18px 4px;display:flex;flex-direction:column;gap:18px}
+form{padding:20px 18px 4px;display:flex;flex-direction:column;gap:14px}
+.formstep{display:flex;flex-direction:column;gap:18px}
 .fld{display:flex;flex-direction:column;gap:8px;font-size:13px;color:#58503f}
 .fld input[type=text],.fld input[type=number],.fld textarea{padding:14px 15px;border-radius:10px;border:1px solid rgba(27,23,18,.2);background:#fff;color:var(--ink);font:600 16px/1.3 Manrope,Arial,sans-serif;outline:none;transition:border-color .25s;width:100%}
 .fld textarea{font-weight:400;resize:vertical}
@@ -86,6 +87,7 @@ button.stopbtn:active{transform:scale(.97)}
 .nachher-nav button{flex:1;padding:16px;border-radius:12px;border:none;font:800 14px/1 Archivo,Manrope,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
 .nachher-nav .back{background:rgba(255,255,255,.7);color:var(--ink);border:1px solid rgba(27,23,18,.2)}
 .nachher-nav .next{background:var(--ink);color:#f3efe7}
+.nachher-nav .next.go{background:var(--gold);color:#14110d}
 .nachher-nav .next:disabled{opacity:.4;cursor:default}
 
 .list{padding:26px 18px 0}
@@ -116,45 +118,61 @@ button.stopbtn:active{transform:scale(.97)}
     <p>Läuft nur auf diesem Gerät — Fotos, Preis und Zeit werden lokal im Browser gespeichert, nichts wird irgendwohin gesendet. Exportiere regelmäßig unten, damit nichts verloren geht.</p>
   </header>
 
-  <!-- ===== Phase 1: Formular bis Go ===== -->
+  <!-- ===== Phase 1: Formular als Schritte bis Go ===== -->
   <form id="jobform">
-    <label class="fld">Firma
-      <input type="text" id="f-firma" placeholder="Dein Firmenname" required>
-    </label>
+    <div class="nachher-progress mono" id="formStepIndicator" style="padding:0 18px"></div>
 
-    <div class="grid2">
-      <label class="fld">Marke
-        <input type="text" id="f-marke" placeholder="z.B. VW" required>
-      </label>
-      <label class="fld">Modell
-        <input type="text" id="f-modell" placeholder="z.B. Passat Kombi" required>
+    <div class="formstep" data-step="0">
+      <label class="fld">Firma
+        <input type="text" id="f-firma" placeholder="Dein Firmenname">
       </label>
     </div>
 
-    <div class="fld">
-      <span class="fldlabel">Bereiche — Vorher-Fotos</span>
-      <div class="chips" id="chips"></div>
+    <div class="formstep" data-step="1" hidden>
+      <div class="grid2">
+        <label class="fld">Marke
+          <input type="text" id="f-marke" placeholder="z.B. VW">
+        </label>
+        <label class="fld">Modell
+          <input type="text" id="f-modell" placeholder="z.B. Passat Kombi">
+        </label>
+      </div>
     </div>
 
-    <div id="fotoBereiche"></div>
-
-    <label class="fld">Notizen
-      <textarea id="f-notizen" rows="3" placeholder="Zustand, Besonderheiten, was viel Zeit kosten könnte …"></textarea>
-    </label>
-    <div class="fld">
-      <span class="fldlabel">Foto zur Notiz (optional)</span>
-      <div class="fotoblock-row single" id="notizFotoWrap"></div>
+    <div class="formstep" data-step="2" hidden>
+      <div class="fld">
+        <span class="fldlabel">Bereiche — Vorher-Fotos</span>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div id="fotoBereiche"></div>
     </div>
 
-    <label class="fld">Geplante Zeit (optional)
-      <input type="text" id="f-geplant" placeholder="z.B. 1:30 (Std:Min) oder 90 (Minuten)">
-    </label>
+    <div class="formstep" data-step="3" hidden>
+      <label class="fld">Notizen
+        <textarea id="f-notizen" rows="3" placeholder="Zustand, Besonderheiten, was viel Zeit kosten könnte …"></textarea>
+      </label>
+      <div class="fld">
+        <span class="fldlabel">Foto zur Notiz (optional)</span>
+        <div class="fotoblock-row single" id="notizFotoWrap"></div>
+      </div>
+    </div>
 
-    <label class="fld">Preis
-      <div class="euro"><input type="number" id="f-preis" min="0" step="0.5" inputmode="decimal" placeholder="0,00" required> <span class="mono">€</span></div>
-    </label>
+    <div class="formstep" data-step="4" hidden>
+      <label class="fld">Geplante Zeit (optional)
+        <input type="text" id="f-geplant" placeholder="z.B. 1:30 (Std:Min) oder 90 (Minuten)">
+      </label>
+    </div>
 
-    <button class="primary go" type="submit">Go</button>
+    <div class="formstep" data-step="5" hidden>
+      <label class="fld">Preis
+        <div class="euro"><input type="number" id="f-preis" min="0" step="0.5" inputmode="decimal" placeholder="0,00"> <span class="mono">€</span></div>
+      </label>
+    </div>
+
+    <div class="nachher-nav" style="padding:0 18px">
+      <button class="back" id="formBack" type="button" hidden>Zurück</button>
+      <button class="next" id="formNext" type="button">Weiter</button>
+    </div>
   </form>
 
   <!-- ===== Phase 2: Timer läuft ===== -->
@@ -389,7 +407,51 @@ button.stopbtn:active{transform:scale(.97)}
     firmaInput.value = keepFirma;
     activeStandorte = []; vorherFotoData = {}; notizFoto = null;
     renderChips(); renderFotoBereiche(); renderNotizFoto();
+    currentFormStep = 0;
+    renderFormStep();
   }
+
+  /* ---- Formular-Schritte ---- */
+  var formSteps = Array.prototype.slice.call(document.querySelectorAll(".formstep"));
+  var formStepLabels = ["FIRMA", "FAHRZEUG", "BEREICHE & VORHER-FOTOS", "NOTIZEN", "GEPLANTE ZEIT", "PREIS"];
+  var formStepIndicator = document.getElementById("formStepIndicator");
+  var formBack = document.getElementById("formBack");
+  var formNext = document.getElementById("formNext");
+  var currentFormStep = 0;
+
+  function renderFormStep() {
+    formSteps.forEach(function (el, i) { el.hidden = i !== currentFormStep; });
+    formStepIndicator.textContent = "SCHRITT " + (currentFormStep + 1) + " VON " + formSteps.length + " · " + formStepLabels[currentFormStep];
+    formBack.hidden = currentFormStep === 0;
+    var isLast = currentFormStep === formSteps.length - 1;
+    formNext.textContent = isLast ? "Go" : "Weiter";
+    formNext.classList.toggle("go", isLast);
+  }
+
+  function validateFormStep(i) {
+    if (i === 0 && !firmaInput.value.trim()) { alert("Bitte deinen Firmennamen eingeben."); return false; }
+    if (i === 1 && (!document.getElementById("f-marke").value.trim() || !document.getElementById("f-modell").value.trim())) {
+      alert("Bitte Marke und Modell eingeben."); return false;
+    }
+    if (i === 2 && (!activeStandorte.length || activeStandorte.some(function (s) { return !vorherFotoData[s]; }))) {
+      alert("Bitte mindestens einen Bereich auswählen und für jeden ausgewählten Bereich ein Vorher-Foto aufnehmen.");
+      return false;
+    }
+    return true;
+  }
+
+  formNext.addEventListener("click", function () {
+    var isLast = currentFormStep === formSteps.length - 1;
+    if (isLast) { startJob(); return; }
+    if (!validateFormStep(currentFormStep)) return;
+    currentFormStep += 1;
+    renderFormStep();
+  });
+  formBack.addEventListener("click", function () {
+    currentFormStep -= 1;
+    renderFormStep();
+  });
+  renderFormStep();
 
   /* ---- Aktiver Auftrag (Draft) im Speicher ---- */
   var draft = null; // { id:"active", firma, marke, modell, standorte, vorherFotos:{}, notizen, notizFoto, geplanteZeitSekunden, preis, startZeit, dauerSekunden, nachherIndex, nachherFotos:{} }
@@ -415,6 +477,10 @@ button.stopbtn:active{transform:scale(.97)}
 
   document.getElementById("jobform").addEventListener("submit", function (e) {
     e.preventDefault();
+    startJob();
+  });
+
+  function startJob() {
     var firma = firmaInput.value.trim();
     var marke = document.getElementById("f-marke").value.trim();
     var modell = document.getElementById("f-modell").value.trim();
@@ -449,7 +515,7 @@ button.stopbtn:active{transform:scale(.97)}
     dbPut(STORE_DRAFT, draft).then(function () {
       startLaufendView();
     }).catch(function (err) { alert("Start hat nicht geklappt: " + err); });
-  });
+  }
 
   document.getElementById("stopBtn").addEventListener("click", function () {
     clearInterval(laufendInterval);
